@@ -1,0 +1,338 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/formatters.dart';
+import '../../../models/category_model.dart';
+import '../../../providers/auth_provider.dart';
+import '../../../providers/finance_provider.dart';
+import '../../../shared/widgets/custom_button.dart';
+
+class AddTransactionScreen extends StatefulWidget {
+  const AddTransactionScreen({super.key});
+
+  @override
+  State<AddTransactionScreen> createState() => _AddTransactionScreenState();
+}
+
+class _AddTransactionScreenState extends State<AddTransactionScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _titleCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
+  final _dateCtrl = TextEditingController();
+
+  String _type = 'expense';
+  CategoryModel? _selectedCategory;
+  DateTime _selectedDate = DateTime.now();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _dateCtrl.text = Formatters.dateShort(_selectedDate);
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _amountCtrl.dispose();
+    _dateCtrl.dispose();
+    super.dispose();
+  }
+
+  List<CategoryModel> get _categories {
+    final finance = context.read<FinanceProvider>();
+    return _type == 'income' ? finance.incomeCategories : finance.expenseCategories;
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      locale: const Locale('pt', 'BR'),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+        _dateCtrl.text = Formatters.dateShort(picked);
+      });
+    }
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (_selectedCategory == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecione uma categoria')),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final rawAmount = _amountCtrl.text.replaceAll(RegExp(r'[^\d,\.]'), '').replaceAll(',', '.');
+    final amount = double.tryParse(rawAmount) ?? 0;
+
+    final userId = context.read<AuthProvider>().currentUser!.id!;
+    await context.read<FinanceProvider>().addTransaction(
+          userId: userId,
+          title: _titleCtrl.text.trim(),
+          amount: amount,
+          type: _type,
+          categoryId: _selectedCategory!.id!,
+          date: _selectedDate,
+        );
+
+    if (!mounted) return;
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 16,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Nova Transação',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              _TypeToggle(
+                selected: _type,
+                onChanged: (type) => setState(() {
+                  _type = type;
+                  _selectedCategory = null;
+                }),
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _titleCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Descrição',
+                  hintText: 'Ex: Almoço, Salário...',
+                  prefixIcon: Icon(Icons.edit_outlined, color: AppColors.textSecondary),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe a descrição' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _amountCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d,\.]'))],
+                decoration: const InputDecoration(
+                  labelText: 'Valor (R\$)',
+                  hintText: '0,00',
+                  prefixIcon: Icon(Icons.attach_money, color: AppColors.textSecondary),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Informe o valor';
+                  final raw = v.replaceAll(',', '.');
+                  final val = double.tryParse(raw);
+                  if (val == null || val <= 0) return 'Valor inválido';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _dateCtrl,
+                readOnly: true,
+                onTap: _pickDate,
+                decoration: const InputDecoration(
+                  labelText: 'Data',
+                  prefixIcon: Icon(Icons.calendar_today_outlined, color: AppColors.textSecondary),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _CategorySelector(
+                categories: _categories,
+                selected: _selectedCategory,
+                onSelected: (cat) => setState(() => _selectedCategory = cat),
+              ),
+              const SizedBox(height: 24),
+              CustomButton(
+                label: 'Salvar transação',
+                onPressed: _save,
+                isLoading: _isLoading,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TypeToggle extends StatelessWidget {
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  const _TypeToggle({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: Row(
+        children: [
+          _ToggleOption(
+            label: 'Despesa',
+            icon: Icons.arrow_downward_rounded,
+            isSelected: selected == 'expense',
+            color: AppColors.expense,
+            onTap: () => onChanged('expense'),
+          ),
+          _ToggleOption(
+            label: 'Receita',
+            icon: Icons.arrow_upward_rounded,
+            isSelected: selected == 'income',
+            color: AppColors.income,
+            onTap: () => onChanged('income'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleOption extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ToggleOption({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? color : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: isSelected ? Colors.white : AppColors.textSecondary, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CategorySelector extends StatelessWidget {
+  final List<CategoryModel> categories;
+  final CategoryModel? selected;
+  final ValueChanged<CategoryModel> onSelected;
+
+  const _CategorySelector({
+    required this.categories,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Categoria',
+          style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: categories.map((cat) {
+            final isSelected = selected?.id == cat.id;
+            return GestureDetector(
+              onTap: () => onSelected(cat),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? cat.color.withOpacity(0.15) : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected ? cat.color : AppColors.divider,
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(cat.icon, color: cat.color, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      cat.name,
+                      style: TextStyle(
+                        color: isSelected ? cat.color : AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
