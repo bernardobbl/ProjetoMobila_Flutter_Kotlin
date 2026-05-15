@@ -41,7 +41,7 @@ class AppTheme {
           color: isDark ? const Color(0xFFE8E8F0) : AppColors.textPrimary,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: isDark ? const Color(0xFF1E1E2E) : AppColors.card,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -91,7 +91,7 @@ class AppTheme {
         elevation: 8,
         type: BottomNavigationBarType.fixed,
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: isDark ? const Color(0xFF1E1E2E) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),

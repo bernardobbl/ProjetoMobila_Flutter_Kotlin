@@ -34,73 +34,75 @@ class TransactionCard extends StatelessWidget {
         ),
         child: const Icon(Icons.delete_outline, color: Colors.white, size: 26),
       ),
-      child: Material(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: Row(
-              children: [
-                _CategoryIcon(category: category),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+        ),
+        child: Material(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  _CategoryIcon(category: category),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          transaction.title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          category?.name ?? 'Sem categoria',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        transaction.title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
+                        '${transaction.isIncome ? '+' : '-'} ${Formatters.currency(transaction.amount)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
                           fontSize: 14,
-                          color: AppColors.textPrimary,
+                          color: transaction.isIncome ? AppColors.income : AppColors.expense,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        category?.name ?? 'Sem categoria',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        Formatters.dateShort(transaction.date),
+                        style: const TextStyle(fontSize: 11, color: AppColors.textHint),
                       ),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${transaction.isIncome ? '+' : '-'} ${Formatters.currency(transaction.amount)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: transaction.isIncome ? AppColors.income : AppColors.expense,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      Formatters.dateShort(transaction.date),
-                      style: const TextStyle(fontSize: 11, color: AppColors.textHint),
-                    ),
+                  if (onTap != null) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right, size: 18, color: AppColors.textHint),
                   ],
-                ),
-                if (onTap != null) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right, size: 18, color: AppColors.textHint),
                 ],
-              ],
+              ),
             ),
           ),
         ),

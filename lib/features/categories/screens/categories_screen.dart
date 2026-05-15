@@ -97,7 +97,7 @@ class _CategoryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -122,10 +122,10 @@ class _CategoryTile extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             category.name,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
             ),
             textAlign: TextAlign.center,
             maxLines: 2,

@@ -101,7 +101,7 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
       ),
@@ -136,7 +136,11 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       label,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).textTheme.bodyLarge?.color,
+      ),
     );
   }
 }
@@ -157,7 +161,7 @@ class _ExpensePieChart extends StatelessWidget {
     final expensesByCategory = finance.expensesByCategory;
 
     if (expensesByCategory.isEmpty) {
-      return _emptyChart('Nenhuma despesa registrada neste mês');
+      return _emptyChart(context, 'Nenhuma despesa registrada neste mês');
     }
 
     final entries = expensesByCategory.entries.toList();
@@ -165,7 +169,7 @@ class _ExpensePieChart extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
       ),
@@ -223,11 +227,11 @@ class _ExpensePieChart extends StatelessWidget {
     );
   }
 
-  Widget _emptyChart(String message) {
+  Widget _emptyChart(BuildContext context, String message) {
     return Container(
       height: 180,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Center(
@@ -259,7 +263,7 @@ class _MonthlyBarChart extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
       ),

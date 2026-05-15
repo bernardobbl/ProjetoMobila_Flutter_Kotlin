@@ -353,7 +353,9 @@ class _CategorySelector extends StatelessWidget {
                     Text(
                       cat.name,
                       style: TextStyle(
-                        color: isSelected ? cat.color : AppColors.textPrimary,
+                        color: isSelected
+                            ? cat.color
+                            : Theme.of(context).textTheme.bodyLarge?.color,
                         fontSize: 13,
                         fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                       ),
