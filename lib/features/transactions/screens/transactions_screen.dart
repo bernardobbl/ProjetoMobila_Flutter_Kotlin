@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../models/transaction_model.dart';
 import '../../../providers/finance_provider.dart';
 import '../widgets/transaction_card.dart';
 import 'add_transaction_screen.dart';
@@ -14,6 +15,24 @@ class TransactionsScreen extends StatefulWidget {
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   String _filter = 'all'; // 'all' | 'income' | 'expense'
+
+  void _openAdd() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const AddTransactionScreen(),
+    );
+  }
+
+  void _openEdit(TransactionModel tx) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AddTransactionScreen(transaction: tx),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,12 +52,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
               icon: const Icon(Icons.add_circle_outline, color: AppColors.primary),
-              onPressed: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => const AddTransactionScreen(),
-              ),
+              tooltip: 'Nova transação',
+              onPressed: _openAdd,
             ),
           ),
         ],
@@ -62,6 +77,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             transaction: tx,
                             category: category,
                             onDelete: () => finance.deleteTransaction(tx.id),
+                            onTap: () => _openEdit(tx),
                           );
                         },
                       ),
@@ -82,10 +98,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             color: AppColors.textHint,
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Nenhuma transação encontrada',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
-          ),
+          const Text('Nenhuma transação encontrada', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
         ],
       ),
     );
@@ -101,7 +114,7 @@ class _FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
         children: [
@@ -138,7 +151,7 @@ class _FilterChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.background,
+          color: isSelected ? AppColors.primary : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(

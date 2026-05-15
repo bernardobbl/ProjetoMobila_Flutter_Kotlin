@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/finance_provider.dart';
-import '../../../core/utils/formatters.dart';
+import '../../../providers/theme_provider.dart';
+import '../../categories/screens/categories_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -12,6 +14,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final finance = context.watch<FinanceProvider>();
+    final theme = context.watch<ThemeProvider>();
     final user = auth.currentUser;
 
     return Scaffold(
@@ -24,14 +27,30 @@ class ProfileScreen extends StatelessWidget {
             email: user?.email ?? '',
             totalTransactions: finance.transactions.length,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           _StatsRow(finance: finance),
-          const SizedBox(height: 24),
-          const _SectionTitle(title: 'Configurações'),
+          const SizedBox(height: 28),
+          const _SectionTitle(title: 'Preferências'),
+          const SizedBox(height: 12),
+          // Dark mode toggle
+          _DarkModeTile(provider: theme),
+          const SizedBox(height: 28),
+          const _SectionTitle(title: 'Navegação'),
+          const SizedBox(height: 12),
+          _SettingsTile(
+            icon: Icons.category_outlined,
+            label: 'Ver categorias',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+            ),
+          ),
+          const SizedBox(height: 28),
+          const _SectionTitle(title: 'Conta'),
           const SizedBox(height: 12),
           _SettingsTile(
             icon: Icons.info_outline,
-            label: 'Sobre o app',
+            label: 'Sobre o FinanFlow',
             onTap: () => _showAbout(context),
           ),
           const SizedBox(height: 8),
@@ -39,7 +58,7 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.delete_outline,
             label: 'Limpar todas as transações',
             color: AppColors.expense,
-            onTap: () => _confirmClearData(context, finance, auth.currentUser!.id!),
+            onTap: () => _confirmClearData(context, finance),
           ),
           const SizedBox(height: 8),
           _SettingsTile(
@@ -48,6 +67,7 @@ class ProfileScreen extends StatelessWidget {
             color: AppColors.expense,
             onTap: () => _confirmLogout(context, auth),
           ),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -57,15 +77,12 @@ class ProfileScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primaryDark, AppColors.primaryLight],
-                ),
+                gradient: const LinearGradient(colors: [AppColors.primaryDark, AppColors.primaryLight]),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 20),
@@ -92,11 +109,10 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmClearData(BuildContext context, FinanceProvider finance, int userId) async {
+  Future<void> _confirmClearData(BuildContext context, FinanceProvider finance) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Limpar dados'),
         content: const Text('Todas as transações serão excluídas permanentemente. Continuar?'),
         actions: [
@@ -122,7 +138,6 @@ class ProfileScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Sair da conta'),
         content: const Text('Deseja realmente sair?'),
         actions: [
@@ -140,16 +155,53 @@ class ProfileScreen extends StatelessWidget {
   }
 }
 
+class _DarkModeTile extends StatelessWidget {
+  final ThemeProvider provider;
+
+  const _DarkModeTile({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: provider.toggleTheme,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Row(
+            children: [
+              Icon(
+                provider.isDarkMode ? Icons.dark_mode : Icons.light_mode_outlined,
+                color: AppColors.primary,
+                size: 22,
+              ),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Text(
+                  'Modo escuro',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+              ),
+              Switch(
+                value: provider.isDarkMode,
+                onChanged: (_) => provider.toggleTheme(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _UserCard extends StatelessWidget {
   final String name;
   final String email;
   final int totalTransactions;
 
-  const _UserCard({
-    required this.name,
-    required this.email,
-    required this.totalTransactions,
-  });
+  const _UserCard({required this.name, required this.email, required this.totalTransactions});
 
   @override
   Widget build(BuildContext context) {
@@ -168,10 +220,7 @@ class _UserCard extends StatelessWidget {
           Container(
             width: 60,
             height: 60,
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              shape: BoxShape.circle,
-            ),
+            decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
             child: Center(
               child: Text(
                 name.isNotEmpty ? name[0].toUpperCase() : '?',
@@ -242,7 +291,7 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
       ),
@@ -267,7 +316,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
     );
   }
 }
@@ -287,9 +336,9 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tileColor = color ?? AppColors.textPrimary;
+    final tileColor = color ?? Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary;
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).cardColor,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: onTap,

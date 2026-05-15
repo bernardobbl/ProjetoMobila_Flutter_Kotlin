@@ -4,12 +4,18 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../models/category_model.dart';
+import '../../../models/transaction_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/finance_provider.dart';
 import '../../../shared/widgets/custom_button.dart';
 
 class AddTransactionScreen extends StatefulWidget {
-  const AddTransactionScreen({super.key});
+  // Passando uma transação existente ativa o modo de edição
+  final TransactionModel? transaction;
+
+  const AddTransactionScreen({super.key, this.transaction});
+
+  bool get isEditing => transaction != null;
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
@@ -21,15 +27,36 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   final _amountCtrl = TextEditingController();
   final _dateCtrl = TextEditingController();
 
-  String _type = 'expense';
+  late String _type;
   CategoryModel? _selectedCategory;
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _dateCtrl.text = Formatters.dateShort(_selectedDate);
+
+    if (widget.isEditing) {
+      final tx = widget.transaction!;
+      _type = tx.type;
+      _selectedDate = tx.date;
+      _titleCtrl.text = tx.title;
+      _amountCtrl.text = tx.amount.toStringAsFixed(2).replaceAll('.', ',');
+      _dateCtrl.text = Formatters.dateShort(tx.date);
+      // Categoria será resolvida após o build, no _afterBuild
+      WidgetsBinding.instance.addPostFrameCallback((_) => _resolveCategory());
+    } else {
+      _type = 'expense';
+      _selectedDate = DateTime.now();
+      _dateCtrl.text = Formatters.dateShort(_selectedDate);
+    }
+  }
+
+  void _resolveCategory() {
+    if (!widget.isEditing) return;
+    final finance = context.read<FinanceProvider>();
+    final cat = finance.getCategoryById(widget.transaction!.categoryId);
+    if (cat != null) setState(() => _selectedCategory = cat);
   }
 
   @override
@@ -65,7 +92,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Selecione uma categoria')),
+        SnackBar(
+          content: const Text('Selecione uma categoria'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
       return;
     }
@@ -74,16 +105,28 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     final rawAmount = _amountCtrl.text.replaceAll(RegExp(r'[^\d,\.]'), '').replaceAll(',', '.');
     final amount = double.tryParse(rawAmount) ?? 0;
+    final finance = context.read<FinanceProvider>();
 
-    final userId = context.read<AuthProvider>().currentUser!.id!;
-    await context.read<FinanceProvider>().addTransaction(
-          userId: userId,
-          title: _titleCtrl.text.trim(),
-          amount: amount,
-          type: _type,
-          categoryId: _selectedCategory!.id!,
-          date: _selectedDate,
-        );
+    if (widget.isEditing) {
+      final updated = widget.transaction!.copyWith(
+        title: _titleCtrl.text.trim(),
+        amount: amount,
+        type: _type,
+        categoryId: _selectedCategory!.id!,
+        date: _selectedDate,
+      );
+      await finance.editTransaction(updated);
+    } else {
+      final userId = context.read<AuthProvider>().currentUser!.id!;
+      await finance.addTransaction(
+        userId: userId,
+        title: _titleCtrl.text.trim(),
+        amount: amount,
+        type: _type,
+        categoryId: _selectedCategory!.id!,
+        date: _selectedDate,
+      );
+    }
 
     if (!mounted) return;
     Navigator.pop(context);
@@ -92,9 +135,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.only(
         left: 24,
@@ -120,9 +163,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Nova Transação',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                widget.isEditing ? 'Editar Transação' : 'Nova Transação',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               _TypeToggle(
@@ -140,7 +183,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   hintText: 'Ex: Almoço, Salário...',
                   prefixIcon: Icon(Icons.edit_outlined, color: AppColors.textSecondary),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe a descrição' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Informe a descrição' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -178,7 +222,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 24),
               CustomButton(
-                label: 'Salvar transação',
+                label: widget.isEditing ? 'Salvar alterações' : 'Salvar transação',
                 onPressed: _save,
                 isLoading: _isLoading,
               ),
@@ -200,26 +244,14 @@ class _TypeToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(4),
       child: Row(
         children: [
-          _ToggleOption(
-            label: 'Despesa',
-            icon: Icons.arrow_downward_rounded,
-            isSelected: selected == 'expense',
-            color: AppColors.expense,
-            onTap: () => onChanged('expense'),
-          ),
-          _ToggleOption(
-            label: 'Receita',
-            icon: Icons.arrow_upward_rounded,
-            isSelected: selected == 'income',
-            color: AppColors.income,
-            onTap: () => onChanged('income'),
-          ),
+          _ToggleOption(label: 'Despesa', icon: Icons.arrow_downward_rounded, isSelected: selected == 'expense', color: AppColors.expense, onTap: () => onChanged('expense')),
+          _ToggleOption(label: 'Receita', icon: Icons.arrow_upward_rounded, isSelected: selected == 'income', color: AppColors.income, onTap: () => onChanged('income')),
         ],
       ),
     );
@@ -306,7 +338,7 @@ class _CategorySelector extends StatelessWidget {
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? cat.color.withOpacity(0.15) : Colors.white,
+                  color: isSelected ? cat.color.withOpacity(0.15) : Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isSelected ? cat.color : AppColors.divider,

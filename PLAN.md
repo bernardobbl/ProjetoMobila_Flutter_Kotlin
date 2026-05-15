@@ -58,16 +58,18 @@ App de finanças pessoais em Flutter com controle de receitas, despesas, categor
 - [x] Botão de sair (logout)
 - [x] Créditos do app
 
-### 🔲 Fase 8 — Polimento Final
-- [ ] Animações de entrada nas telas
-- [ ] Skeleton loading (carregamento visual)
-- [ ] Testes de UI e ajustes finais
-- [ ] Ícone do app e splash screen personalizada
+### ✅ Fase 8 — Polimento Final
+- [x] Splash screen animada (logo com scale + fade, texto com slide)
+- [x] Transição suave da splash para o app (FadeTransition)
+- [x] Contador animado no card de saldo (TweenAnimationBuilder)
+- [x] Dark mode completo (ThemeProvider + AppTheme.darkTheme)
+- [x] Edição de transação (tap no card abre formulário preenchido)
+- [x] AuthGate para roteamento automático em login/logout
+- [x] Correção de bugs: icon_code → icon_name, generate:true, locale pt_BR
 
 ---
 
 ## Melhorias Futuras (Backlog)
-- [ ] Dark mode
 - [ ] Notificações de alerta de orçamento
 - [ ] Transações recorrentes (ex: aluguel mensal)
 - [ ] Exportar relatório em PDF
@@ -76,6 +78,7 @@ App de finanças pessoais em Flutter com controle de receitas, despesas, categor
 - [ ] Múltiplas moedas
 - [ ] Metas financeiras com progresso
 - [ ] Widget na tela inicial do celular
+- [ ] Skeleton loading (shimmer ao carregar)
 
 ---
 

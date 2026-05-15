@@ -8,12 +8,14 @@ class TransactionCard extends StatelessWidget {
   final TransactionModel transaction;
   final CategoryModel? category;
   final VoidCallback? onDelete;
+  final VoidCallback? onTap;
 
   const TransactionCard({
     super.key,
     required this.transaction,
     required this.category,
     this.onDelete,
+    this.onTap,
   });
 
   @override
@@ -32,67 +34,75 @@ class TransactionCard extends StatelessWidget {
         ),
         child: const Icon(Icons.delete_outline, color: Colors.white, size: 26),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
+      child: Material(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            _CategoryIcon(category: category),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    transaction.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    category?.name ?? 'Sem categoria',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${transaction.isIncome ? '+' : '-'} ${Formatters.currency(transaction.amount)}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: transaction.isIncome ? AppColors.income : AppColors.expense,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  Formatters.dateShort(transaction.date),
-                  style: const TextStyle(fontSize: 11, color: AppColors.textHint),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-          ],
+            child: Row(
+              children: [
+                _CategoryIcon(category: category),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        transaction.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppColors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        category?.name ?? 'Sem categoria',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${transaction.isIncome ? '+' : '-'} ${Formatters.currency(transaction.amount)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: transaction.isIncome ? AppColors.income : AppColors.expense,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      Formatters.dateShort(transaction.date),
+                      style: const TextStyle(fontSize: 11, color: AppColors.textHint),
+                    ),
+                  ],
+                ),
+                if (onTap != null) ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right, size: 18, color: AppColors.textHint),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -102,7 +112,6 @@ class TransactionCard extends StatelessWidget {
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Excluir transação'),
         content: Text('Deseja excluir "${transaction.title}"?'),
         actions: [
@@ -136,11 +145,7 @@ class _CategoryIcon extends StatelessWidget {
         color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(
-        category?.icon ?? Icons.category_outlined,
-        color: color,
-        size: 22,
-      ),
+      child: Icon(category?.icon ?? Icons.category_outlined, color: color, size: 22),
     );
   }
 }

@@ -21,16 +21,16 @@ class BalanceCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primaryDark, AppColors.primary, AppColors.primaryLight],
+          colors: [AppColors.primaryDark, AppColors.primary, Color(0xFF9D8FFF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: AppColors.primary.withOpacity(0.40),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -42,13 +42,20 @@ class BalanceCard extends StatelessWidget {
             style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 8),
-          Text(
-            Formatters.currency(balance),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
+          // Contador animado — anima quando o saldo muda
+          TweenAnimationBuilder<double>(
+            key: ValueKey(balance),
+            tween: Tween(begin: 0, end: balance),
+            duration: const Duration(milliseconds: 1000),
+            curve: Curves.easeOutCubic,
+            builder: (_, value, __) => Text(
+              Formatters.currency(value),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
             ),
           ),
           const SizedBox(height: 4),
@@ -57,12 +64,23 @@ class BalanceCard extends StatelessWidget {
             style: const TextStyle(color: Colors.white60, fontSize: 12),
           ),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(child: _StatItem(label: 'Receitas', amount: income, isIncome: true)),
-              Container(width: 1, height: 40, color: Colors.white24),
-              Expanded(child: _StatItem(label: 'Despesas', amount: expense, isIncome: false)),
-            ],
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _StatItem(label: 'Receitas', amount: income, isIncome: true),
+                ),
+                Container(width: 1, height: 36, color: Colors.white24),
+                Expanded(
+                  child: _StatItem(label: 'Despesas', amount: expense, isIncome: false),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -84,10 +102,7 @@ class _StatItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        left: isIncome ? 0 : 16,
-        right: isIncome ? 16 : 0,
-      ),
+      padding: EdgeInsets.only(left: isIncome ? 0 : 16, right: isIncome ? 16 : 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -96,25 +111,31 @@ class _StatItem extends StatelessWidget {
               Icon(
                 isIncome ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
                 color: isIncome ? const Color(0xFF90EE90) : const Color(0xFFFFAA99),
-                size: 16,
+                size: 14,
               ),
               const SizedBox(width: 4),
               Text(
                 label,
-                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                style: const TextStyle(color: Colors.white70, fontSize: 11),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            Formatters.currency(amount),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
+          TweenAnimationBuilder<double>(
+            key: ValueKey(amount),
+            tween: Tween(begin: 0, end: amount),
+            duration: const Duration(milliseconds: 900),
+            curve: Curves.easeOutCubic,
+            builder: (_, value, __) => Text(
+              Formatters.currency(value),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

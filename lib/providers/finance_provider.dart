@@ -130,4 +130,14 @@ class FinanceProvider extends ChangeNotifier {
     _transactions.removeWhere((t) => t.id == id);
     notifyListeners();
   }
+
+  Future<void> editTransaction(TransactionModel updated) async {
+    await DatabaseHelper.instance.updateTransaction(updated);
+    final index = _transactions.indexWhere((t) => t.id == updated.id);
+    if (index != -1) {
+      _transactions[index] = updated;
+      _transactions.sort((a, b) => b.date.compareTo(a.date));
+    }
+    notifyListeners();
+  }
 }

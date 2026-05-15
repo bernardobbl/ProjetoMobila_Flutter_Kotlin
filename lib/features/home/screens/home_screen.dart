@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../models/transaction_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/finance_provider.dart';
 import '../widgets/balance_card.dart';
@@ -37,13 +38,7 @@ class HomeScreen extends StatelessWidget {
                             expense: finance.thisMonthExpense,
                           ),
                           const SizedBox(height: 32),
-                          _buildSectionHeader(
-                            context,
-                            title: 'Últimas transações',
-                            onViewAll: () {
-                              // Navegar para aba de transações
-                            },
-                          ),
+                          _buildSectionHeader(context, title: 'Últimas transações'),
                           const SizedBox(height: 12),
                         ],
                       ),
@@ -63,6 +58,7 @@ class HomeScreen extends StatelessWidget {
                               transaction: tx,
                               category: category,
                               onDelete: () => finance.deleteTransaction(tx.id),
+                              onTap: () => _openEdit(context, tx),
                             ),
                           );
                         },
@@ -74,7 +70,7 @@ class HomeScreen extends StatelessWidget {
               ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openAddTransaction(context),
+        onPressed: () => _openAdd(context),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -84,16 +80,27 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  void _openAdd(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const AddTransactionScreen(),
+    );
+  }
+
+  void _openEdit(BuildContext context, TransactionModel tx) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => AddTransactionScreen(transaction: tx),
+    );
+  }
+
   Widget _buildGreeting(BuildContext context, String firstName) {
     final hour = DateTime.now().hour;
-    String greeting;
-    if (hour < 12) {
-      greeting = 'Bom dia';
-    } else if (hour < 18) {
-      greeting = 'Boa tarde';
-    } else {
-      greeting = 'Boa noite';
-    }
+    final greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -103,9 +110,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             Text(
               '$greeting, $firstName!',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             Text(
               Formatters.dateLong(DateTime.now()),
@@ -115,14 +120,10 @@ class HomeScreen extends StatelessWidget {
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2)),
             ],
           ),
           child: const Padding(
@@ -134,27 +135,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(
-    BuildContext context, {
-    required String title,
-    VoidCallback? onViewAll,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        if (onViewAll != null)
-          GestureDetector(
-            onTap: onViewAll,
-            child: const Text(
-              'Ver todas',
-              style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-          ),
-      ],
+  Widget _buildSectionHeader(BuildContext context, {required String title}) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
     );
   }
 
@@ -166,10 +150,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             Icon(Icons.receipt_long_outlined, size: 64, color: AppColors.textHint),
             SizedBox(height: 16),
-            Text(
-              'Nenhuma transação ainda',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
-            ),
+            Text('Nenhuma transação ainda', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
             SizedBox(height: 4),
             Text(
               'Adicione sua primeira receita ou despesa',
@@ -179,15 +160,6 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  void _openAddTransaction(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => const AddTransactionScreen(),
     );
   }
 }
