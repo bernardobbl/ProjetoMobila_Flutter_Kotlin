@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/database/database_helper.dart';
@@ -44,8 +45,9 @@ class AuthProvider extends ChangeNotifier {
       await _prefs.setInt('user_id', id);
       notifyListeners();
       return true;
-    } catch (e) {
-      _error = 'Erro ao cadastrar. Tente novamente.';
+    } catch (e, st) {
+      debugPrint('Erro register: $e\n$st');
+      _error = 'Erro ao cadastrar: $e';
       notifyListeners();
       return false;
     }

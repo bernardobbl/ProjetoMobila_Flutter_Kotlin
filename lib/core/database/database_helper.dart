@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../../models/transaction_model.dart';
@@ -16,7 +17,9 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    final path = join(await getDatabasesPath(), 'finanflow.db');
+    final path = kIsWeb
+        ? 'finanflow_v3.db'
+        : join(await getDatabasesPath(), 'finanflow_v3.db');
     return openDatabase(
       path,
       version: 1,
@@ -27,7 +30,7 @@ class DatabaseHelper {
   Future<void> _onCreate(Database db, int version) async {
     await db.execute('''
       CREATE TABLE users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL
@@ -37,7 +40,7 @@ class DatabaseHelper {
     // icon_name TEXT em vez de icon_code INTEGER — evita problemas com codepoints
     await db.execute('''
       CREATE TABLE categories (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         icon_name TEXT NOT NULL,
         color_value INTEGER NOT NULL,
