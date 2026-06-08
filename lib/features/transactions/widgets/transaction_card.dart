@@ -36,17 +36,12 @@ class TransactionCard extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Material(
-          color: Theme.of(context).cardColor,
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
             onTap: onTap,
@@ -144,7 +139,7 @@ class _CategoryIcon extends StatelessWidget {
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(category?.icon ?? Icons.category_outlined, color: color, size: 22),

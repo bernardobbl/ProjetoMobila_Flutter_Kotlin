@@ -2,85 +2,118 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 
+/// Bloco de visão geral da Home: saldo total como protagonista, variação do mês
+/// e dois mini-cards planos (receitas e despesas).
 class BalanceCard extends StatelessWidget {
   final double balance;
   final double income;
   final double expense;
+  final double? savingsRate; // % poupado no mês; null esconde o selo
+  final bool hideBalance;
+  final VoidCallback onToggleHide;
 
   const BalanceCard({
     super.key,
     required this.balance,
     required this.income,
     required this.expense,
+    required this.savingsRate,
+    required this.hideBalance,
+    required this.onToggleHide,
   });
+
+  static const _hidden = '••••••';
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primaryDark, AppColors.primary, Color(0xFF9D8FFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.40),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Saldo Total',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          // Contador animado — anima quando o saldo muda
-          TweenAnimationBuilder<double>(
-            key: ValueKey(balance),
-            tween: Tween(begin: 0, end: balance),
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeOutCubic,
-            builder: (_, value, __) => Text(
-              Formatters.currency(value),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.5,
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text('Saldo total',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+            const Spacer(),
+            InkWell(
+              onTap: onToggleHide,
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  hideBalance ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          hideBalance ? _hidden : Formatters.currency(balance),
+          style: TextStyle(
+            color: textColor,
+            fontSize: 36,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -1,
           ),
-          const SizedBox(height: 4),
+        ),
+        if (savingsRate != null) ...[
+          const SizedBox(height: 10),
+          _TrendPill(rate: savingsRate!),
+        ],
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: _MiniCard(
+                label: 'Receitas',
+                amount: income,
+                color: AppColors.income,
+                hide: hideBalance,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _MiniCard(
+                label: 'Despesas',
+                amount: expense,
+                color: AppColors.expense,
+                hide: hideBalance,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TrendPill extends StatelessWidget {
+  final double rate;
+
+  const _TrendPill({required this.rate});
+
+  @override
+  Widget build(BuildContext context) {
+    final positive = rate >= 0;
+    final color = positive ? AppColors.income : AppColors.expense;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(positive ? Icons.trending_up : Icons.trending_down, color: color, size: 15),
+          const SizedBox(width: 5),
           Text(
-            Formatters.monthYear(DateTime.now()),
-            style: const TextStyle(color: Colors.white60, fontSize: 12),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _StatItem(label: 'Receitas', amount: income, isIncome: true),
-                ),
-                Container(width: 1, height: 36, color: Colors.white24),
-                Expanded(
-                  child: _StatItem(label: 'Despesas', amount: expense, isIncome: false),
-                ),
-              ],
-            ),
+            '${rate.abs().toStringAsFixed(1)}% poupado este mês',
+            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -88,55 +121,48 @@ class BalanceCard extends StatelessWidget {
   }
 }
 
-class _StatItem extends StatelessWidget {
+class _MiniCard extends StatelessWidget {
   final String label;
   final double amount;
-  final bool isIncome;
+  final Color color;
+  final bool hide;
 
-  const _StatItem({
+  const _MiniCard({
     required this.label,
     required this.amount,
-    required this.isIncome,
+    required this.color,
+    required this.hide,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(left: isIncome ? 0 : 16, right: isIncome ? 16 : 0),
+    final isIncome = color == AppColors.income;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                isIncome ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-                color: isIncome ? const Color(0xFF90EE90) : const Color(0xFFFFAA99),
-                size: 14,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                label,
-                style: const TextStyle(color: Colors.white70, fontSize: 11),
-              ),
+              Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+              const SizedBox(width: 6),
+              Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
             ],
           ),
-          const SizedBox(height: 4),
-          TweenAnimationBuilder<double>(
-            key: ValueKey(amount),
-            tween: Tween(begin: 0, end: amount),
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeOutCubic,
-            builder: (_, value, __) => Text(
-              Formatters.currency(value),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+          const SizedBox(height: 8),
+          Text(
+            hide ? '••••' : '${isIncome ? '+ ' : '- '}${Formatters.currency(amount)}',
+            style: TextStyle(color: color, fontSize: 15, fontWeight: FontWeight.w700),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
+          const SizedBox(height: 2),
+          const Text('este mês', style: TextStyle(color: AppColors.textHint, fontSize: 11)),
         ],
       ),
     );

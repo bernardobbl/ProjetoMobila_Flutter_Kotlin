@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/app_snackbar.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../models/category_model.dart';
 import '../../../models/transaction_model.dart';
@@ -103,9 +104,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     setState(() => _isLoading = true);
 
-    final rawAmount = _amountCtrl.text.replaceAll(RegExp(r'[^\d,\.]'), '').replaceAll(',', '.');
-    final amount = double.tryParse(rawAmount) ?? 0;
+    final amount = Formatters.parseAmount(_amountCtrl.text) ?? 0;
     final finance = context.read<FinanceProvider>();
+    // Capturamos o messenger antes de fechar o bottom sheet, pois o contexto
+    // deste sheet deixa de existir após o Navigator.pop.
+    final messenger = ScaffoldMessenger.of(context);
+    final wasEditing = widget.isEditing;
 
     if (widget.isEditing) {
       final updated = widget.transaction!.copyWith(
@@ -130,6 +134,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     if (!mounted) return;
     Navigator.pop(context);
+    AppSnackbar.successWith(
+      messenger,
+      wasEditing ? 'Transação atualizada!' : 'Transação adicionada!',
+    );
   }
 
   @override
@@ -198,8 +206,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 ),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Informe o valor';
-                  final raw = v.replaceAll(',', '.');
-                  final val = double.tryParse(raw);
+                  final val = Formatters.parseAmount(v);
                   if (val == null || val <= 0) return 'Valor inválido';
                   return null;
                 },
@@ -244,7 +251,7 @@ class _TypeToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(4),
@@ -338,7 +345,7 @@ class _CategorySelector extends StatelessWidget {
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? cat.color.withOpacity(0.15) : Theme.of(context).cardColor,
+                  color: isSelected ? cat.color.withValues(alpha: 0.15) : Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isSelected ? cat.color : AppColors.divider,

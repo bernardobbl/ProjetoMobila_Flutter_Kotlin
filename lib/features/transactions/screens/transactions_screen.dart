@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/app_snackbar.dart';
+import '../../../core/utils/formatters.dart';
 import '../../../models/transaction_model.dart';
 import '../../../providers/finance_provider.dart';
 import '../widgets/transaction_card.dart';
@@ -15,6 +17,23 @@ class TransactionsScreen extends StatefulWidget {
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   String _filter = 'all'; // 'all' | 'income' | 'expense'
+  String _query = '';
+  bool _monthFilterEnabled = false;
+  late DateTime _selectedMonth;
+  final _searchCtrl = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedMonth = DateTime(now.year, now.month);
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
 
   void _openAdd() {
     showModalBottomSheet(
@@ -34,15 +53,38 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
+  void _changeMonth(int delta) {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + delta);
+    });
+  }
+
+  List<TransactionModel> _applyFilters(FinanceProvider finance) {
+    Iterable<TransactionModel> list = finance.transactions;
+
+    if (_filter == 'income') {
+      list = list.where((t) => t.isIncome);
+    } else if (_filter == 'expense') {
+      list = list.where((t) => !t.isIncome);
+    }
+
+    if (_monthFilterEnabled) {
+      list = list.where((t) =>
+          t.date.year == _selectedMonth.year && t.date.month == _selectedMonth.month);
+    }
+
+    final q = _query.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      list = list.where((t) => t.title.toLowerCase().contains(q));
+    }
+
+    return list.toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final finance = context.watch<FinanceProvider>();
-
-    final filtered = switch (_filter) {
-      'income' => finance.incomeTransactions,
-      'expense' => finance.expenseTransactions,
-      _ => finance.transactions,
-    };
+    final filtered = _applyFilters(finance);
 
     return Scaffold(
       appBar: AppBar(
@@ -60,14 +102,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       ),
       body: Column(
         children: [
+          _buildSearchField(),
           _FilterBar(current: _filter, onChanged: (f) => setState(() => _filter = f)),
+          _buildMonthFilter(),
           Expanded(
             child: finance.isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
                 : filtered.isEmpty
                     ? _buildEmpty()
                     : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
                         itemCount: filtered.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
@@ -76,7 +120,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           return TransactionCard(
                             transaction: tx,
                             category: category,
-                            onDelete: () => finance.deleteTransaction(tx.id),
+                            onDelete: () {
+                              finance.deleteTransaction(tx.id);
+                              AppSnackbar.success(context, 'Transação excluída');
+                            },
                             onTap: () => _openEdit(tx),
                           );
                         },
@@ -87,18 +134,82 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     );
   }
 
+  Widget _buildSearchField() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+      child: TextField(
+        controller: _searchCtrl,
+        onChanged: (v) => setState(() => _query = v),
+        decoration: InputDecoration(
+          hintText: 'Buscar por título...',
+          prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+          suffixIcon: _query.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    setState(() => _query = '');
+                  },
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthFilter() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: _monthFilterEnabled
+          ? Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () => _changeMonth(-1),
+                  visualDensity: VisualDensity.compact,
+                ),
+                Expanded(
+                  child: Text(
+                    Formatters.monthYear(_selectedMonth),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => _changeMonth(1),
+                  visualDensity: VisualDensity.compact,
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _monthFilterEnabled = false),
+                  child: const Text('Limpar'),
+                ),
+              ],
+            )
+          : Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _monthFilterEnabled = true),
+                icon: const Icon(Icons.calendar_month_outlined, size: 18),
+                label: const Text('Filtrar por mês'),
+              ),
+            ),
+    );
+  }
+
   Widget _buildEmpty() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            _filter == 'income' ? Icons.arrow_upward_rounded : Icons.receipt_long_outlined,
+            _query.isNotEmpty ? Icons.search_off : Icons.receipt_long_outlined,
             size: 64,
             color: AppColors.textHint,
           ),
           const SizedBox(height: 16),
-          const Text('Nenhuma transação encontrada', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+          const Text('Nenhuma transação encontrada',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
         ],
       ),
     );
@@ -115,7 +226,7 @@ class _FilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
         children: [
           _FilterChip(label: 'Todas', value: 'all', current: current, onTap: onChanged),

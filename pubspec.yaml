@@ -29,6 +29,9 @@ dependencies:
   intl: ^0.20.2
   uuid: ^4.4.0
   shared_preferences: ^2.3.2
+  crypto: ^3.0.3          # hash de senha (SHA-256 + salt)
+  path_provider: ^2.1.0   # diretório para salvar o CSV exportado
+  share_plus: ^10.0.0     # compartilhar o arquivo CSV
 
   cupertino_icons: ^1.0.8
 

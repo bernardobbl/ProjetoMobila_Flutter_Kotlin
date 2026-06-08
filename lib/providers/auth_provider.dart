@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/database/database_helper.dart';
+import '../core/utils/password_hasher.dart';
 import '../models/user_model.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -39,15 +39,26 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
-      final user = UserModel(name: name, email: email, password: password);
+      // Nunca guardamos a senha em texto puro: apenas o hash + salt.
+      final salt = PasswordHasher.generateSalt();
+      final hashed = PasswordHasher.hash(password, salt);
+
+      final user = UserModel(name: name, email: email, password: hashed, salt: salt);
       final id = await DatabaseHelper.instance.insertUser(user);
-      _currentUser = UserModel(id: id, name: name, email: email, password: password);
+      _currentUser = UserModel(
+        id: id,
+        name: name,
+        email: email,
+        password: hashed,
+        salt: salt,
+      );
       await _prefs.setInt('user_id', id);
       notifyListeners();
       return true;
     } catch (e, st) {
       debugPrint('Erro register: $e\n$st');
-      _error = 'Erro ao cadastrar: $e';
+      // Mensagem amigável para o usuário, sem expor detalhes técnicos.
+      _error = 'Não foi possível concluir o cadastro. Tente novamente.';
       notifyListeners();
       return false;
     }
@@ -55,24 +66,54 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> login({required String email, required String password}) async {
     _error = null;
-    final user = await DatabaseHelper.instance.getUserByEmail(email);
+    try {
+      final user = await DatabaseHelper.instance.getUserByEmail(email);
 
-    if (user == null) {
-      _error = 'E-mail não encontrado.';
+      if (user == null) {
+        _error = 'E-mail não encontrado.';
+        notifyListeners();
+        return false;
+      }
+
+      final bool senhaCorreta;
+      if (user.isLegacy) {
+        // Conta antiga (senha em texto puro). Confere e, se bater, migra para hash.
+        senhaCorreta = user.password == password;
+        if (senhaCorreta) {
+          await _migrateLegacyPassword(user, password);
+        }
+      } else {
+        senhaCorreta = PasswordHasher.verify(
+          password: password,
+          salt: user.salt!,
+          expectedHash: user.password,
+        );
+      }
+
+      if (!senhaCorreta) {
+        _error = 'Senha incorreta.';
+        notifyListeners();
+        return false;
+      }
+
+      _currentUser = await DatabaseHelper.instance.getUserById(user.id!) ?? user;
+      await _prefs.setInt('user_id', user.id!);
+      notifyListeners();
+      return true;
+    } catch (e, st) {
+      debugPrint('Erro login: $e\n$st');
+      _error = 'Não foi possível entrar. Tente novamente.';
       notifyListeners();
       return false;
     }
+  }
 
-    if (user.password != password) {
-      _error = 'Senha incorreta.';
-      notifyListeners();
-      return false;
-    }
-
-    _currentUser = user;
-    await _prefs.setInt('user_id', user.id!);
-    notifyListeners();
-    return true;
+  /// Converte uma senha legada (texto puro) para hash + salt no primeiro login.
+  Future<void> _migrateLegacyPassword(UserModel user, String password) async {
+    final salt = PasswordHasher.generateSalt();
+    final hashed = PasswordHasher.hash(password, salt);
+    final migrated = user.copyWith(password: hashed, salt: salt);
+    await DatabaseHelper.instance.updateUser(migrated);
   }
 
   Future<void> logout() async {

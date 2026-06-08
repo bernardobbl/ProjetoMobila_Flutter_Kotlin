@@ -111,7 +111,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       width: 100,
                       height: 100,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(28),
                         border: Border.all(color: Colors.white30, width: 1.5),
                       ),
@@ -144,7 +144,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       Text(
                         'Controle sua vida financeira',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.75),
+                          color: Colors.white.withValues(alpha: 0.75),
                           fontSize: 15,
                           letterSpacing: 0.3,
                         ),

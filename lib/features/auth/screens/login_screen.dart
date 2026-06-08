@@ -75,7 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textSecondary),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Informe o e-mail';
-                    if (!v.contains('@')) return 'E-mail inválido';
+                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) {
+                      return 'E-mail inválido';
+                    }
                     return null;
                   },
                 ),

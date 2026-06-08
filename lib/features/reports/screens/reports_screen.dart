@@ -2,8 +2,11 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/app_snackbar.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../providers/finance_provider.dart';
+import '../../../shared/widgets/budget_card.dart';
+import '../../transactions/services/csv_exporter.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -14,27 +17,91 @@ class ReportsScreen extends StatefulWidget {
 
 class _ReportsScreenState extends State<ReportsScreen> {
   int _touchedIndex = -1;
+  late DateTime _selectedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _selectedMonth = DateTime(now.year, now.month);
+  }
+
+  bool get _isCurrentMonth {
+    final now = DateTime.now();
+    return _selectedMonth.year == now.year && _selectedMonth.month == now.month;
+  }
+
+  void _changeMonth(int delta) {
+    setState(() {
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + delta);
+      _touchedIndex = -1;
+    });
+  }
+
+  Future<void> _exportCsv(FinanceProvider finance) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (finance.transactions.isEmpty) {
+      AppSnackbar.error(context, 'Não há transações para exportar.');
+      return;
+    }
+    try {
+      await CsvExporter.exportTransactions(
+        finance.transactions,
+        finance.getCategoryById,
+      );
+    } catch (e) {
+      AppSnackbar.errorWith(messenger, 'Não foi possível exportar o CSV.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final finance = context.watch<FinanceProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Relatórios')),
+      appBar: AppBar(
+        title: const Text('Relatórios'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.ios_share, color: AppColors.primary),
+            tooltip: 'Exportar CSV',
+            onPressed: () => _exportCsv(finance),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: finance.isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                _SummaryHeader(finance: finance),
-                const SizedBox(height: 24),
-                _SectionLabel(label: 'Gastos por categoria — ${Formatters.monthYear(DateTime.now())}'),
+                _MonthSelector(
+                  month: _selectedMonth,
+                  canGoNext: !_isCurrentMonth,
+                  onPrevious: () => _changeMonth(-1),
+                  onNext: () => _changeMonth(1),
+                ),
                 const SizedBox(height: 16),
-                _ExpensePieChart(finance: finance, touchedIndex: _touchedIndex, onTouch: (i) => setState(() => _touchedIndex = i)),
-                const SizedBox(height: 24),
-                _SectionLabel(label: 'Receitas vs Despesas — últimos 6 meses'),
+                _SummaryHeader(finance: finance, month: _selectedMonth),
                 const SizedBox(height: 16),
-                _MonthlyBarChart(finance: finance),
+                BudgetCard(
+                  budget: finance.monthlyBudget,
+                  spent: finance.expenseForMonth(_selectedMonth),
+                  monthLabel: Formatters.monthYear(_selectedMonth),
+                ),
+                const SizedBox(height: 24),
+                _SectionLabel(label: 'Gastos por categoria — ${Formatters.monthYear(_selectedMonth)}'),
+                const SizedBox(height: 16),
+                _ExpensePieChart(
+                  finance: finance,
+                  month: _selectedMonth,
+                  touchedIndex: _touchedIndex,
+                  onTouch: (i) => setState(() => _touchedIndex = i),
+                ),
+                const SizedBox(height: 24),
+                const _SectionLabel(label: 'Receitas vs Despesas — últimos 6 meses'),
+                const SizedBox(height: 16),
+                _MonthlyBarChart(finance: finance, reference: _selectedMonth),
                 const SizedBox(height: 24),
               ],
             ),
@@ -42,20 +109,69 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 }
 
-class _SummaryHeader extends StatelessWidget {
-  final FinanceProvider finance;
+class _MonthSelector extends StatelessWidget {
+  final DateTime month;
+  final bool canGoNext;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
 
-  const _SummaryHeader({required this.finance});
+  const _MonthSelector({
+    required this.month,
+    required this.canGoNext,
+    required this.onPrevious,
+    required this.onNext,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final saved = finance.thisMonthIncome - finance.thisMonthExpense;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: onPrevious,
+            tooltip: 'Mês anterior',
+          ),
+          Text(
+            Formatters.monthYear(month),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: canGoNext ? onNext : null,
+            tooltip: 'Próximo mês',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _SummaryHeader extends StatelessWidget {
+  final FinanceProvider finance;
+  final DateTime month;
+
+  const _SummaryHeader({required this.finance, required this.month});
+
+  @override
+  Widget build(BuildContext context) {
+    final income = finance.incomeForMonth(month);
+    final expense = finance.expenseForMonth(month);
+    final saved = income - expense;
     return Row(
       children: [
         Expanded(
           child: _SummaryCard(
             label: 'Receitas',
-            value: finance.thisMonthIncome,
+            value: income,
             color: AppColors.income,
             icon: Icons.arrow_upward_rounded,
           ),
@@ -64,7 +180,7 @@ class _SummaryHeader extends StatelessWidget {
         Expanded(
           child: _SummaryCard(
             label: 'Despesas',
-            value: finance.thisMonthExpense,
+            value: expense,
             color: AppColors.expense,
             icon: Icons.arrow_downward_rounded,
           ),
@@ -103,7 +219,7 @@ class _SummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,18 +263,20 @@ class _SectionLabel extends StatelessWidget {
 
 class _ExpensePieChart extends StatelessWidget {
   final FinanceProvider finance;
+  final DateTime month;
   final int touchedIndex;
   final ValueChanged<int> onTouch;
 
   const _ExpensePieChart({
     required this.finance,
+    required this.month,
     required this.touchedIndex,
     required this.onTouch,
   });
 
   @override
   Widget build(BuildContext context) {
-    final expensesByCategory = finance.expensesByCategory;
+    final expensesByCategory = finance.expensesByCategoryForMonth(month);
 
     if (expensesByCategory.isEmpty) {
       return _emptyChart(context, 'Nenhuma despesa registrada neste mês');
@@ -171,7 +289,7 @@ class _ExpensePieChart extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -250,12 +368,13 @@ class _ExpensePieChart extends StatelessWidget {
 
 class _MonthlyBarChart extends StatelessWidget {
   final FinanceProvider finance;
+  final DateTime reference;
 
-  const _MonthlyBarChart({required this.finance});
+  const _MonthlyBarChart({required this.finance, required this.reference});
 
   @override
   Widget build(BuildContext context) {
-    final data = finance.lastSixMonthsData;
+    final data = finance.lastSixMonthsData(reference);
     final maxY = data.fold<double>(0, (max, d) {
       final m = [d['income'] as double, d['expense'] as double].reduce((a, b) => a > b ? a : b);
       return m > max ? m : max;
@@ -265,7 +384,7 @@ class _MonthlyBarChart extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
       ),
       padding: const EdgeInsets.fromLTRB(12, 20, 20, 12),
       child: Column(
@@ -293,14 +412,14 @@ class _MonthlyBarChart extends StatelessWidget {
                       },
                     ),
                   ),
-                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  getDrawingHorizontalLine: (_) => FlLine(color: AppColors.divider, strokeWidth: 1),
+                  getDrawingHorizontalLine: (_) => const FlLine(color: AppColors.divider, strokeWidth: 1),
                 ),
                 borderData: FlBorderData(show: false),
                 barGroups: List.generate(data.length, (i) {
@@ -326,11 +445,11 @@ class _MonthlyBarChart extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _Legend(color: AppColors.income, label: 'Receitas'),
-              const SizedBox(width: 20),
+              SizedBox(width: 20),
               _Legend(color: AppColors.expense, label: 'Despesas'),
             ],
           ),

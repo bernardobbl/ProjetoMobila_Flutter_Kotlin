@@ -6,6 +6,7 @@ import '../../../providers/auth_provider.dart';
 import '../../../providers/finance_provider.dart';
 import '../../../providers/theme_provider.dart';
 import '../../categories/screens/categories_screen.dart';
+import '../../recurring/screens/recurring_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -39,10 +40,19 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 12),
           _SettingsTile(
             icon: Icons.category_outlined,
-            label: 'Ver categorias',
+            label: 'Gerenciar categorias',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+            ),
+          ),
+          const SizedBox(height: 8),
+          _SettingsTile(
+            icon: Icons.repeat,
+            label: 'Transações recorrentes',
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const RecurringScreen()),
             ),
           ),
           const SizedBox(height: 28),
@@ -293,7 +303,7 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
