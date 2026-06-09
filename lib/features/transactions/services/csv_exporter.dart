@@ -44,7 +44,7 @@ class CsvExporter {
   static String _two(int n) => n.toString().padLeft(2, '0');
 
   static String _escape(String field) {
-    if (field.contains(';') || field.contains('"') || field.contains('\n')) {
+    if (field.contains(';') || field.contains('"') || field.contains('\n') || field.contains('\r')) {
       return '"${field.replaceAll('"', '""')}"';
     }
     return field;
