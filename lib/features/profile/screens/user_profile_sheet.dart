@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -41,7 +40,7 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
   // O picker só é aberto DEPOIS que o sheet de opções fechou completamente (.then),
   // evitando o erro do iOS de apresentar dois modais simultaneamente.
   void _showPhotoOptions() {
-    final hasPhoto = context.read<AuthProvider>().currentUser?.photoPath != null;
+    final hasPhoto = context.read<AuthProvider>().photoBytes != null;
 
     showModalBottomSheet<_PhotoChoice>(
       context: context,
@@ -148,9 +147,11 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().currentUser ?? widget.user;
+    final auth = context.watch<AuthProvider>();
+    final user = auth.currentUser ?? widget.user;
     final initial = user.name.isNotEmpty ? user.name[0].toUpperCase() : '?';
-    final hasPhoto = user.photoPath != null && File(user.photoPath!).existsSync();
+    final photoBytes = auth.photoBytes;
+    final hasPhoto = photoBytes != null;
 
     return Container(
       decoration: BoxDecoration(
@@ -209,8 +210,8 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
                               ? ClipOval(
                                   child: _isPickingPhoto
                                       ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                                      : Image.file(
-                                          File(user.photoPath!),
+                                      : Image.memory(
+                                          photoBytes!,
                                           width: 80,
                                           height: 80,
                                           fit: BoxFit.cover,

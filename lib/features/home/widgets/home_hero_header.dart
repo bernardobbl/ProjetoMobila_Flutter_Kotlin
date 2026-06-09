@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
@@ -8,6 +8,7 @@ class HomeHeroHeader extends StatelessWidget {
   final String firstName;
   final String initials;
   final String? photoPath;
+  final Uint8List? photoBytes;
   final double balance;
   final double income;
   final double expense;
@@ -20,6 +21,7 @@ class HomeHeroHeader extends StatelessWidget {
     required this.firstName,
     required this.initials,
     this.photoPath,
+    this.photoBytes,
     required this.balance,
     required this.income,
     required this.expense,
@@ -78,7 +80,7 @@ class HomeHeroHeader extends StatelessWidget {
                       greeting: greeting,
                       firstName: firstName,
                       initials: initials,
-                      photoPath: photoPath,
+                      photoBytes: photoBytes,
                     ),
                     const SizedBox(height: 28),
                     _BalanceSection(
@@ -110,18 +112,18 @@ class _GreetingRow extends StatelessWidget {
   final String greeting;
   final String firstName;
   final String initials;
-  final String? photoPath;
+  final Uint8List? photoBytes;
 
   const _GreetingRow({
     required this.greeting,
     required this.firstName,
     required this.initials,
-    this.photoPath,
+    this.photoBytes,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasPhoto = photoPath != null && File(photoPath!).existsSync();
+    final hasPhoto = photoBytes != null;
     return Row(
       children: [
         Expanded(
@@ -164,8 +166,8 @@ class _GreetingRow extends StatelessWidget {
           child: hasPhoto
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(12.5),
-                  child: Image.file(
-                    File(photoPath!),
+                  child: Image.memory(
+                    photoBytes!,
                     width: 44,
                     height: 44,
                     fit: BoxFit.cover,

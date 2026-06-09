@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -39,6 +39,7 @@ class ProfileScreen extends StatelessWidget {
               email: user?.email ?? '',
               totalTransactions: finance.transactions.length,
               photoPath: user?.photoPath,
+              photoBytes: auth.photoBytes,
             ),
           ),
           const SizedBox(height: 20),
@@ -224,17 +225,19 @@ class _UserCard extends StatelessWidget {
   final String email;
   final int totalTransactions;
   final String? photoPath;
+  final Uint8List? photoBytes;
 
   const _UserCard({
     required this.name,
     required this.email,
     required this.totalTransactions,
     this.photoPath,
+    this.photoBytes,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasPhoto = photoPath != null && File(photoPath!).existsSync();
+    final hasPhoto = photoBytes != null;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -254,8 +257,8 @@ class _UserCard extends StatelessWidget {
             decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
             child: hasPhoto
                 ? ClipOval(
-                    child: Image.file(
-                      File(photoPath!),
+                    child: Image.memory(
+                      photoBytes!,
                       width: 60,
                       height: 60,
                       fit: BoxFit.cover,

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -13,6 +14,7 @@ class AuthProvider extends ChangeNotifier {
 
   UserModel? _currentUser;
   String? _error;
+  Uint8List? _photoBytes;
 
   AuthProvider(this._prefs) {
     _loadSavedUser();
@@ -21,12 +23,30 @@ class AuthProvider extends ChangeNotifier {
   UserModel? get currentUser => _currentUser;
   String? get error => _error;
   bool get isLoggedIn => _currentUser != null;
+  Uint8List? get photoBytes => _photoBytes;
 
   Future<void> _loadSavedUser() async {
     final userId = _prefs.getInt('user_id');
     if (userId == null) return;
     _currentUser = await DatabaseHelper.instance.getUserById(userId);
+    if (_currentUser?.photoPath != null) {
+      await _loadPhotoBytes(_currentUser!);
+    }
     notifyListeners();
+  }
+
+  Future<void> _loadPhotoBytes(UserModel user) async {
+    try {
+      if (kIsWeb) {
+        final b64 = _prefs.getString('photo_bytes_${user.id}');
+        if (b64 != null) _photoBytes = base64Decode(b64);
+      } else {
+        final file = File(user.photoPath!);
+        if (await file.exists()) _photoBytes = await file.readAsBytes();
+      }
+    } catch (_) {
+      _photoBytes = null;
+    }
   }
 
   Future<bool> register({
@@ -159,16 +179,25 @@ class AuthProvider extends ChangeNotifier {
     String? destPath;
 
     if (bytes != null) {
-      final docsDir = await getApplicationDocumentsDirectory();
-      final fileName = 'avatar_${user.id}.jpg';
-      final dest = File(p.join(docsDir.path, fileName));
-      await dest.writeAsBytes(bytes, flush: true);
-      destPath = dest.path;
-    }
-
-    if (user.photoPath != null && user.photoPath != destPath) {
-      final old = File(user.photoPath!);
-      if (await old.exists()) await old.delete();
+      if (kIsWeb) {
+        await _prefs.setString('photo_bytes_${user.id}', base64Encode(bytes));
+        destPath = 'web:${user.id}';
+      } else {
+        final docsDir = await getApplicationDocumentsDirectory();
+        final fileName = 'avatar_${user.id}.jpg';
+        final dest = File(p.join(docsDir.path, fileName));
+        await dest.writeAsBytes(bytes, flush: true);
+        destPath = dest.path;
+      }
+      _photoBytes = bytes;
+    } else {
+      if (kIsWeb) {
+        await _prefs.remove('photo_bytes_${user.id}');
+      } else if (user.photoPath != null) {
+        final old = File(user.photoPath!);
+        if (await old.exists()) await old.delete();
+      }
+      _photoBytes = null;
     }
 
     final updated = user.copyWith(photoPath: destPath, clearPhoto: destPath == null);
@@ -180,6 +209,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await _prefs.remove('user_id');
     _currentUser = null;
+    _photoBytes = null;
     notifyListeners();
   }
 

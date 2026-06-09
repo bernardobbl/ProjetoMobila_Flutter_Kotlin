@@ -65,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     firstName: firstName,
                     initials: _initials(fullName),
                     photoPath: auth.currentUser?.photoPath,
+                    photoBytes: auth.photoBytes,
                     balance: finance.balance,
                     income: income,
                     expense: expense,
