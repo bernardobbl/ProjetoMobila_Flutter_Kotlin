@@ -15,7 +15,7 @@ Future<void> saveCsvAndShare(String content, String fileName) async {
   final isIOS = ua.contains('iphone') ||
       ua.contains('ipad') ||
       ua.contains('ipod') ||
-      (ua.contains('macintosh') && html.window.navigator.maxTouchPoints > 1);
+      (ua.contains('macintosh') && (html.window.navigator.maxTouchPoints ?? 0) > 1);
 
   if (isIOS) {
     // iOS Safari ignores the `download` attribute and navigates to the blob
