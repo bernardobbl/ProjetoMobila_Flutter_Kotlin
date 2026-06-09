@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_snackbar.dart';
@@ -26,6 +28,7 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
   bool _obscureNew = true;
   bool _obscureConfirm = true;
   bool _isLoading = false;
+  bool _isPickingPhoto = false;
 
   @override
   void dispose() {
@@ -33,6 +36,77 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
     _newPassCtrl.dispose();
     _confirmPassCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    Navigator.pop(context); // fecha o menu de escolha
+    setState(() => _isPickingPhoto = true);
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      if (!mounted) return;
+      final auth = context.read<AuthProvider>();
+      await auth.updateProfilePhoto(picked.path);
+    } finally {
+      if (mounted) setState(() => _isPickingPhoto = false);
+    }
+  }
+
+  void _showPhotoOptions() {
+    final user = context.read<AuthProvider>().currentUser!;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            _PhotoOption(
+              icon: Icons.camera_alt_outlined,
+              label: 'Tirar foto',
+              onTap: () => _pickPhoto(ImageSource.camera),
+            ),
+            const SizedBox(height: 8),
+            _PhotoOption(
+              icon: Icons.photo_library_outlined,
+              label: 'Escolher da galeria',
+              onTap: () => _pickPhoto(ImageSource.gallery),
+            ),
+            if (user.photoPath != null) ...[
+              const SizedBox(height: 8),
+              _PhotoOption(
+                icon: Icons.delete_outline,
+                label: 'Remover foto',
+                color: AppColors.expense,
+                onTap: () async {
+                  Navigator.pop(context);
+                  await context.read<AuthProvider>().updateProfilePhoto(null);
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _save() async {
@@ -56,8 +130,9 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final user = widget.user;
+    final user = context.watch<AuthProvider>().currentUser ?? widget.user;
     final initial = user.name.isNotEmpty ? user.name[0].toUpperCase() : '?';
+    final hasPhoto = user.photoPath != null && File(user.photoPath!).existsSync();
 
     return Container(
       decoration: BoxDecoration(
@@ -93,26 +168,67 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
               // Avatar + nome + email
               Column(
                 children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.primaryDark, AppColors.primary],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(
-                        initial,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
+                  GestureDetector(
+                    onTap: _showPhotoOptions,
+                    child: Stack(
+                      alignment: Alignment.bottomRight,
+                      children: [
+                        // Foto ou letra inicial
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: hasPhoto
+                                ? null
+                                : const LinearGradient(
+                                    colors: [AppColors.primaryDark, AppColors.primary],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                          ),
+                          child: hasPhoto
+                              ? ClipOval(
+                                  child: _isPickingPhoto
+                                      ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                                      : Image.file(
+                                          File(user.photoPath!),
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                        ),
+                                )
+                              : Center(
+                                  child: _isPickingPhoto
+                                      ? const CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        )
+                                      : Text(
+                                          initial,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                ),
                         ),
-                      ),
+                        // Botão de edição
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Theme.of(context).scaffoldBackgroundColor,
+                              width: 2,
+                            ),
+                          ),
+                          child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -144,8 +260,8 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
               const SizedBox(height: 24),
 
               // Título seção senha
-              Row(
-                children: const [
+              const Row(
+                children: [
                   Icon(Icons.lock_outline, size: 18, color: AppColors.textSecondary),
                   SizedBox(width: 8),
                   Text(
@@ -160,7 +276,6 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
               ),
               const SizedBox(height: 16),
 
-              // Senha atual
               CustomTextField(
                 label: 'Senha atual',
                 controller: _oldPassCtrl,
@@ -181,7 +296,6 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
               ),
               const SizedBox(height: 12),
 
-              // Nova senha
               CustomTextField(
                 label: 'Nova senha',
                 controller: _newPassCtrl,
@@ -203,7 +317,6 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
               ),
               const SizedBox(height: 12),
 
-              // Confirmar nova senha
               CustomTextField(
                 label: 'Confirmar nova senha',
                 controller: _confirmPassCtrl,
@@ -230,6 +343,43 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
                 isLoading: _isLoading,
                 onPressed: _save,
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PhotoOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _PhotoOption({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? Theme.of(context).textTheme.bodyLarge?.color ?? AppColors.textPrimary;
+    return Material(
+      color: Theme.of(context).cardColor,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, color: c, size: 22),
+              const SizedBox(width: 14),
+              Text(label, style: TextStyle(color: c, fontSize: 14, fontWeight: FontWeight.w500)),
             ],
           ),
         ),
