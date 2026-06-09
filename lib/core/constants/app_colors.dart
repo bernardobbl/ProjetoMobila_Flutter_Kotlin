@@ -6,7 +6,7 @@ class AppColors {
   // ─── Marca (azul) ─────────────────────────────────────────────────────
   static const primary = Color(0xFF3D7BFF);
   static const primaryLight = Color(0xFF6F9DFF);
-  static const primaryDark = Color(0xFF2C5FE0);
+  static const primaryDark = Color(0xFF1540A0);   // azul profundo — alinhado ao header
 
   // ─── Entrada (teal) / Saída (vermelho suave) ──────────────────────────
   static const income = Color(0xFF1FC8A4);

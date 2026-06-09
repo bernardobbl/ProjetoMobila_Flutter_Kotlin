@@ -112,11 +112,12 @@ flutter run
 ## 🎨 Design
 
 **Cores principais:**
-- 🟣 **Primária:** `#6C63FF` (índigo/roxo moderno)
-- 🟢 **Receita:** `#4CAF50` (verde)
-- 🔴 **Despesa:** `#FF5252` (vermelho suave)
-- ⚪ **Fundo claro:** `#F0F2FF`
-- ⚫ **Fundo escuro:** `#0F0F1A`
+- 🔵 **Primária:** `#3D7BFF` (azul vibrante)
+- 🌑 **Header hero:** `#091830 → #0D2461 → #1A4CB8` (gradiente azul profundo)
+- 🟢 **Receita:** `#1FC8A4` (teal)
+- 🔴 **Despesa:** `#F26D6D` (vermelho suave)
+- ⚪ **Fundo claro:** `#F4F6FA`
+- ⚫ **Fundo escuro:** `#0E1116`
 
 **Estilo:**
 - Material Design 3
