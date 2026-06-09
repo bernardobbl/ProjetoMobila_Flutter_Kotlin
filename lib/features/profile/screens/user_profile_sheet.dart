@@ -40,6 +40,7 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
 
   Future<void> _pickPhoto(ImageSource source) async {
     Navigator.pop(context); // fecha o menu de escolha
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isPickingPhoto = true);
     try {
       final picked = await ImagePicker().pickImage(
@@ -48,10 +49,13 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
         maxHeight: 512,
         imageQuality: 85,
       );
-      if (picked == null) return;
+      if (picked == null || !mounted) return;
+      // readAsBytes() lida corretamente com content URIs no Android
+      final bytes = await picked.readAsBytes();
       if (!mounted) return;
-      final auth = context.read<AuthProvider>();
-      await auth.updateProfilePhoto(picked.path);
+      await context.read<AuthProvider>().updateProfilePhoto(bytes);
+    } catch (e) {
+      AppSnackbar.errorWith(messenger, 'Não foi possível salvar a foto.');
     } finally {
       if (mounted) setState(() => _isPickingPhoto = false);
     }
@@ -99,7 +103,7 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
                 color: AppColors.expense,
                 onTap: () async {
                   Navigator.pop(context);
-                  await context.read<AuthProvider>().updateProfilePhoto(null);
+                  await context.read<AuthProvider>().updateProfilePhoto(null); // null = remover
                 },
               ),
             ],

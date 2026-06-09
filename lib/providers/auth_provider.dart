@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -152,19 +153,19 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateProfilePhoto(String? sourcePath) async {
+  // bytes == null → remove foto; bytes != null → salva foto
+  Future<void> updateProfilePhoto(Uint8List? bytes) async {
     final user = _currentUser!;
     String? destPath;
 
-    if (sourcePath != null) {
+    if (bytes != null) {
       final docsDir = await getApplicationDocumentsDirectory();
       final fileName = 'avatar_${user.id}.jpg';
       final dest = File(p.join(docsDir.path, fileName));
-      await File(sourcePath).copy(dest.path);
+      await dest.writeAsBytes(bytes, flush: true);
       destPath = dest.path;
     }
 
-    // Remove foto anterior se existir e for diferente
     if (user.photoPath != null && user.photoPath != destPath) {
       final old = File(user.photoPath!);
       if (await old.exists()) await old.delete();
