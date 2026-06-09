@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
@@ -7,6 +8,7 @@ import '../../../providers/finance_provider.dart';
 import '../../../providers/theme_provider.dart';
 import '../../categories/screens/categories_screen.dart';
 import '../../recurring/screens/recurring_screen.dart';
+import 'user_profile_sheet.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -23,10 +25,22 @@ class ProfileScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          _UserCard(
-            name: user?.name ?? '',
-            email: user?.email ?? '',
-            totalTransactions: finance.transactions.length,
+          GestureDetector(
+            onTap: user == null
+                ? null
+                : () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => UserProfileSheet(user: user),
+                    ),
+            child: _UserCard(
+              name: user?.name ?? '',
+              email: user?.email ?? '',
+              totalTransactions: finance.transactions.length,
+              photoPath: user?.photoPath,
+              photoBytes: auth.photoBytes,
+            ),
           ),
           const SizedBox(height: 20),
           _StatsRow(finance: finance),
@@ -210,11 +224,21 @@ class _UserCard extends StatelessWidget {
   final String name;
   final String email;
   final int totalTransactions;
+  final String? photoPath;
+  final Uint8List? photoBytes;
 
-  const _UserCard({required this.name, required this.email, required this.totalTransactions});
+  const _UserCard({
+    required this.name,
+    required this.email,
+    required this.totalTransactions,
+    this.photoPath,
+    this.photoBytes,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final hasPhoto = photoBytes != null;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -231,12 +255,21 @@ class _UserCard extends StatelessWidget {
             width: 60,
             height: 60,
             decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
-            child: Center(
-              child: Text(
-                name.isNotEmpty ? name[0].toUpperCase() : '?',
-                style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
-              ),
-            ),
+            child: hasPhoto
+                ? ClipOval(
+                    child: Image.memory(
+                      photoBytes!,
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : Center(
+                    child: Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : '?',
+                      style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
+                    ),
+                  ),
           ),
           const SizedBox(width: 16),
           Expanded(

@@ -25,6 +25,8 @@ O **FinanFlow** ajuda o usuário a organizar e visualizar sua vida financeira co
 - ✨ **Splash animada** — Logo com animação elástica + texto deslizante
 - 🎯 **Filtros** — Visualizar tudo / só receitas / só despesas
 - 🇧🇷 **Localização PT-BR** — Datas, moeda e calendário em português
+- 👤 **Modal de perfil** — Toque no card do usuário abre painel com dados e formulário de alteração de senha (verificação da senha antiga + hash seguro SHA-256)
+- 📷 **Foto de perfil** — Seleção via câmera ou galeria, armazenada localmente; exibida no card e no modal
 
 ---
 
@@ -40,6 +42,7 @@ O **FinanFlow** ajuda o usuário a organizar e visualizar sua vida financeira co
 | **Persistência leve** | SharedPreferences |
 | **Formatação** | intl (datas e moeda PT-BR) |
 | **IDs únicos** | uuid |
+| **Seleção de imagem** | image_picker |
 
 ---
 
@@ -109,11 +112,12 @@ flutter run
 ## 🎨 Design
 
 **Cores principais:**
-- 🟣 **Primária:** `#6C63FF` (índigo/roxo moderno)
-- 🟢 **Receita:** `#4CAF50` (verde)
-- 🔴 **Despesa:** `#FF5252` (vermelho suave)
-- ⚪ **Fundo claro:** `#F0F2FF`
-- ⚫ **Fundo escuro:** `#0F0F1A`
+- 🔵 **Primária:** `#3D7BFF` (azul vibrante)
+- 🌑 **Header hero:** `#091830 → #0D2461 → #1A4CB8` (gradiente azul profundo)
+- 🟢 **Receita:** `#1FC8A4` (teal)
+- 🔴 **Despesa:** `#F26D6D` (vermelho suave)
+- ⚪ **Fundo claro:** `#F4F6FA`
+- ⚫ **Fundo escuro:** `#0E1116`
 
 **Estilo:**
 - Material Design 3
@@ -135,6 +139,7 @@ flutter run
 7. **Categorias** — Grid com 13 categorias (8 despesa + 5 receita)
 8. **Relatórios** — Gráficos de pizza e barras
 9. **Perfil** — Dados do usuário + configurações
+10. **Modal de perfil** — Foto de perfil (câmera/galeria), nome, e-mail e alteração de senha
 
 ---
 

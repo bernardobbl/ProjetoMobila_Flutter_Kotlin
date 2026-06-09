@@ -1,4 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/database/database_helper.dart';
 import '../core/utils/password_hasher.dart';
@@ -9,6 +14,7 @@ class AuthProvider extends ChangeNotifier {
 
   UserModel? _currentUser;
   String? _error;
+  Uint8List? _photoBytes;
 
   AuthProvider(this._prefs) {
     _loadSavedUser();
@@ -17,12 +23,30 @@ class AuthProvider extends ChangeNotifier {
   UserModel? get currentUser => _currentUser;
   String? get error => _error;
   bool get isLoggedIn => _currentUser != null;
+  Uint8List? get photoBytes => _photoBytes;
 
   Future<void> _loadSavedUser() async {
     final userId = _prefs.getInt('user_id');
     if (userId == null) return;
     _currentUser = await DatabaseHelper.instance.getUserById(userId);
+    if (_currentUser?.photoPath != null) {
+      await _loadPhotoBytes(_currentUser!);
+    }
     notifyListeners();
+  }
+
+  Future<void> _loadPhotoBytes(UserModel user) async {
+    try {
+      if (kIsWeb) {
+        final b64 = _prefs.getString('photo_bytes_${user.id}');
+        if (b64 != null) _photoBytes = base64Decode(b64);
+      } else {
+        final file = File(user.photoPath!);
+        if (await file.exists()) _photoBytes = await file.readAsBytes();
+      }
+    } catch (_) {
+      _photoBytes = null;
+    }
   }
 
   Future<bool> register({
@@ -116,9 +140,76 @@ class AuthProvider extends ChangeNotifier {
     await DatabaseHelper.instance.updateUser(migrated);
   }
 
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    _error = null;
+    try {
+      final user = _currentUser!;
+      final valid = user.isLegacy
+          ? user.password == oldPassword
+          : PasswordHasher.verify(
+              password: oldPassword,
+              salt: user.salt!,
+              expectedHash: user.password,
+            );
+      if (!valid) {
+        _error = 'Senha atual incorreta.';
+        notifyListeners();
+        return false;
+      }
+      final salt = PasswordHasher.generateSalt();
+      final hashed = PasswordHasher.hash(newPassword, salt);
+      final updated = user.copyWith(password: hashed, salt: salt);
+      await DatabaseHelper.instance.updateUser(updated);
+      _currentUser = updated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Não foi possível alterar a senha. Tente novamente.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // bytes == null → remove foto; bytes != null → salva foto
+  Future<void> updateProfilePhoto(Uint8List? bytes) async {
+    final user = _currentUser!;
+    String? destPath;
+
+    if (bytes != null) {
+      if (kIsWeb) {
+        await _prefs.setString('photo_bytes_${user.id}', base64Encode(bytes));
+        destPath = 'web:${user.id}';
+      } else {
+        final docsDir = await getApplicationDocumentsDirectory();
+        final fileName = 'avatar_${user.id}.jpg';
+        final dest = File(p.join(docsDir.path, fileName));
+        await dest.writeAsBytes(bytes, flush: true);
+        destPath = dest.path;
+      }
+      _photoBytes = bytes;
+    } else {
+      if (kIsWeb) {
+        await _prefs.remove('photo_bytes_${user.id}');
+      } else if (user.photoPath != null) {
+        final old = File(user.photoPath!);
+        if (await old.exists()) await old.delete();
+      }
+      _photoBytes = null;
+    }
+
+    final updated = user.copyWith(photoPath: destPath, clearPhoto: destPath == null);
+    await DatabaseHelper.instance.updateUser(updated);
+    _currentUser = updated;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     await _prefs.remove('user_id');
     _currentUser = null;
+    _photoBytes = null;
     notifyListeners();
   }
 

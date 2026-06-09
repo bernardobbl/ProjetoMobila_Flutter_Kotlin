@@ -41,23 +41,41 @@ class BalanceCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(20),
               child: Padding(
                 padding: const EdgeInsets.all(4),
-                child: Icon(
-                  hideBalance ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  size: 20,
-                  color: AppColors.textSecondary,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    key: ValueKey(hideBalance),
+                    hideBalance ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    size: 20,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 4),
-        Text(
-          hideBalance ? _hidden : Formatters.currency(balance),
-          style: TextStyle(
-            color: textColor,
-            fontSize: 36,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1,
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
+                  .animate(animation),
+              child: child,
+            ),
+          ),
+          child: Text(
+            key: ValueKey(hideBalance),
+            hideBalance ? _hidden : Formatters.currency(balance),
+            style: TextStyle(
+              color: textColor,
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
         if (savingsRate != null) ...[

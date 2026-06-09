@@ -95,13 +95,18 @@ class BudgetCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: clamped,
-              minHeight: 8,
-              backgroundColor: borderColor,
-              valueColor: AlwaysStoppedAnimation(color),
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: clamped),
+            duration: const Duration(milliseconds: 900),
+            curve: Curves.easeOut,
+            builder: (context, value, _) => ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: value,
+                minHeight: 8,
+                backgroundColor: borderColor,
+                valueColor: AlwaysStoppedAnimation(color),
+              ),
             ),
           ),
           const SizedBox(height: 8),

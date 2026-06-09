@@ -24,7 +24,7 @@ class DatabaseHelper {
         : join(await getDatabasesPath(), 'finanflow_v3.db');
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -37,7 +37,8 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
-        salt TEXT
+        salt TEXT,
+        photo_path TEXT
       )
     ''');
 
@@ -82,6 +83,9 @@ class DatabaseHelper {
           'ALTER TABLE categories ADD COLUMN is_default INTEGER NOT NULL DEFAULT 1');
       await _createBudgetsTable(db);
       await _createRecurringTable(db);
+    }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE users ADD COLUMN photo_path TEXT');
     }
   }
 

@@ -40,16 +40,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _exportCsv(FinanceProvider finance) async {
     final messenger = ScaffoldMessenger.of(context);
-    if (finance.transactions.isEmpty) {
-      AppSnackbar.error(context, 'Não há transações para exportar.');
+    final monthTxs = finance.transactionsForMonth(_selectedMonth);
+    if (monthTxs.isEmpty) {
+      AppSnackbar.error(context, 'Não há transações para exportar neste mês.');
       return;
     }
     try {
       await CsvExporter.exportTransactions(
-        finance.transactions,
+        monthTxs,
         finance.getCategoryById,
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('CSV export error: $e\n$st');
       AppSnackbar.errorWith(messenger, 'Não foi possível exportar o CSV.');
     }
   }
@@ -335,7 +337,15 @@ class _ExpensePieChart extends StatelessWidget {
                 children: [
                   Container(width: 10, height: 10, decoration: BoxDecoration(color: e.key.color, shape: BoxShape.circle)),
                   const SizedBox(width: 6),
-                  Text('${e.key.name} $pct%', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 140),
+                    child: Text(
+                      '${e.key.name} $pct%',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               );
             }).toList(),
