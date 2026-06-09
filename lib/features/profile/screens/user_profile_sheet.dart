@@ -38,35 +38,15 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
     super.dispose();
   }
 
-  Future<void> _pickPhoto(ImageSource source) async {
-    Navigator.pop(context); // fecha o menu de escolha
-    final messenger = ScaffoldMessenger.of(context);
-    setState(() => _isPickingPhoto = true);
-    try {
-      final picked = await ImagePicker().pickImage(
-        source: source,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 85,
-      );
-      if (picked == null || !mounted) return;
-      // readAsBytes() lida corretamente com content URIs no Android
-      final bytes = await picked.readAsBytes();
-      if (!mounted) return;
-      await context.read<AuthProvider>().updateProfilePhoto(bytes);
-    } catch (e) {
-      AppSnackbar.errorWith(messenger, 'Não foi possível salvar a foto.');
-    } finally {
-      if (mounted) setState(() => _isPickingPhoto = false);
-    }
-  }
-
+  // O picker só é aberto DEPOIS que o sheet de opções fechou completamente (.then),
+  // evitando o erro do iOS de apresentar dois modais simultaneamente.
   void _showPhotoOptions() {
-    final user = context.read<AuthProvider>().currentUser!;
-    showModalBottomSheet(
+    final hasPhoto = context.read<AuthProvider>().currentUser?.photoPath != null;
+
+    showModalBottomSheet<_PhotoChoice>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
+      builder: (sheetCtx) => Container(
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -87,30 +67,64 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
             _PhotoOption(
               icon: Icons.camera_alt_outlined,
               label: 'Tirar foto',
-              onTap: () => _pickPhoto(ImageSource.camera),
+              onTap: () => Navigator.pop(sheetCtx, _PhotoChoice.camera),
             ),
             const SizedBox(height: 8),
             _PhotoOption(
               icon: Icons.photo_library_outlined,
               label: 'Escolher da galeria',
-              onTap: () => _pickPhoto(ImageSource.gallery),
+              onTap: () => Navigator.pop(sheetCtx, _PhotoChoice.gallery),
             ),
-            if (user.photoPath != null) ...[
+            if (hasPhoto) ...[
               const SizedBox(height: 8),
               _PhotoOption(
                 icon: Icons.delete_outline,
                 label: 'Remover foto',
                 color: AppColors.expense,
-                onTap: () async {
-                  Navigator.pop(context);
-                  await context.read<AuthProvider>().updateProfilePhoto(null); // null = remover
-                },
+                onTap: () => Navigator.pop(sheetCtx, _PhotoChoice.remove),
               ),
             ],
           ],
         ),
       ),
-    );
+    ).then((choice) {
+      if (choice == null || !mounted) return;
+      if (choice == _PhotoChoice.remove) {
+        _removePhoto();
+      } else {
+        _pickPhoto(choice == _PhotoChoice.camera ? ImageSource.camera : ImageSource.gallery);
+      }
+    });
+  }
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isPickingPhoto = true);
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      final bytes = await picked.readAsBytes();
+      if (!mounted) return;
+      await context.read<AuthProvider>().updateProfilePhoto(bytes);
+    } catch (e) {
+      AppSnackbar.errorWith(messenger, 'Não foi possível salvar a foto.');
+    } finally {
+      if (mounted) setState(() => _isPickingPhoto = false);
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await context.read<AuthProvider>().updateProfilePhoto(null);
+    } catch (e) {
+      AppSnackbar.errorWith(messenger, 'Não foi possível remover a foto.');
+    }
   }
 
   Future<void> _save() async {
@@ -354,6 +368,8 @@ class _UserProfileSheetState extends State<UserProfileSheet> {
     );
   }
 }
+
+enum _PhotoChoice { camera, gallery, remove }
 
 class _PhotoOption extends StatelessWidget {
   final IconData icon;
