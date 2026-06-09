@@ -7,6 +7,7 @@ import '../../../providers/finance_provider.dart';
 import '../../../providers/theme_provider.dart';
 import '../../categories/screens/categories_screen.dart';
 import '../../recurring/screens/recurring_screen.dart';
+import 'user_profile_sheet.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -23,10 +24,20 @@ class ProfileScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          _UserCard(
-            name: user?.name ?? '',
-            email: user?.email ?? '',
-            totalTransactions: finance.transactions.length,
+          GestureDetector(
+            onTap: user == null
+                ? null
+                : () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (_) => UserProfileSheet(user: user),
+                    ),
+            child: _UserCard(
+              name: user?.name ?? '',
+              email: user?.email ?? '',
+              totalTransactions: finance.transactions.length,
+            ),
           ),
           const SizedBox(height: 20),
           _StatsRow(finance: finance),

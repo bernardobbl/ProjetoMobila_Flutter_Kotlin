@@ -116,6 +116,39 @@ class AuthProvider extends ChangeNotifier {
     await DatabaseHelper.instance.updateUser(migrated);
   }
 
+  Future<bool> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    _error = null;
+    try {
+      final user = _currentUser!;
+      final valid = user.isLegacy
+          ? user.password == oldPassword
+          : PasswordHasher.verify(
+              password: oldPassword,
+              salt: user.salt!,
+              expectedHash: user.password,
+            );
+      if (!valid) {
+        _error = 'Senha atual incorreta.';
+        notifyListeners();
+        return false;
+      }
+      final salt = PasswordHasher.generateSalt();
+      final hashed = PasswordHasher.hash(newPassword, salt);
+      final updated = user.copyWith(password: hashed, salt: salt);
+      await DatabaseHelper.instance.updateUser(updated);
+      _currentUser = updated;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = 'Não foi possível alterar a senha. Tente novamente.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<void> logout() async {
     await _prefs.remove('user_id');
     _currentUser = null;
