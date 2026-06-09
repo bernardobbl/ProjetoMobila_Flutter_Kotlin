@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/app_snackbar.dart';
@@ -72,7 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             expense: expense,
                             savingsRate: savingsRate,
                             hideBalance: _hideBalance,
-                            onToggleHide: () => setState(() => _hideBalance = !_hideBalance),
+                            onToggleHide: () {
+                              HapticFeedback.lightImpact();
+                              setState(() => _hideBalance = !_hideBalance);
+                            },
                           ),
                           const SizedBox(height: 16),
                           BudgetCard(
@@ -172,11 +176,15 @@ class _HomeScreenState extends State<HomeScreen> {
           'Transações',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
-        GestureDetector(
+        InkWell(
           onTap: () => widget.onNavigateToTab?.call(1),
-          child: const Text(
-            'Ver tudo',
-            style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600),
+          borderRadius: BorderRadius.circular(8),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+            child: Text(
+              'Ver tudo',
+              style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ],

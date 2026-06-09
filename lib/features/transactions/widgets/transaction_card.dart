@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../models/transaction_model.dart';
@@ -106,6 +107,7 @@ class TransactionCard extends StatelessWidget {
   }
 
   Future<bool?> _confirmDelete(BuildContext context) {
+    HapticFeedback.mediumImpact();
     return showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
